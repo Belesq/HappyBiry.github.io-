@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Collage Animado</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .collage-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            perspective: 1000px;
+        }
+
+        .image-wrapper {
+            position: absolute;
+            width: calc(20vw);
+            height: calc(20vh);
+            transform-style: preserve-3d;
+            opacity: 0;
+            transition: all 1.2s ease-in-out;
+        }
+
+        .image {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            background-size: cover;
+            background-position: center;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 157, 255, 0.8);
+            transform-origin: center center;
+            overflow: hidden; /* Asegura que no se vea ningún texto */
+        }
+
+        .sparkle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #00f7ff;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: sparkleAnim 1.5s infinite;
+            z-index: 1000;
+        }
+
+        @keyframes sparkleAnim {
+            0% { transform: scale(0) rotate(0deg); opacity: 0; }
+            50% { transform: scale(1) rotate(180deg); opacity: 1; }
+            100% { transform: scale(0) rotate(360deg); opacity: 0; }
+        }
+
+        @keyframes floatAnimation {
+            0% { transform: translateZ(0) rotate(0deg); }
+            50% { transform: translateZ(50px) rotate(5deg); }
+            100% { transform: translateZ(0) rotate(0deg); }
+        }
+
+        .final-position {
+            transition: all 1s ease-in-out !important;
+            animation: none !important;
+        }
+
+        .fade-out {
+            opacity: 0 !important;
+            transform: scale(1.5) !important;
+            filter: brightness(2) !important;
+        }
+
+        #transitionOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle, transparent, #000);
+            opacity: 0;
+            transition: opacity 2s ease-in-out;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* Ocultar cualquier texto que pudiera aparecer */
+        * {
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="collage-container" id="collageContainer"></div>
+    <div id="transitionOverlay"></div>
+
+    <script>
+        // Crear y configurar el elemento de audio globalmente
+        const bgMusic = new Audio("sound/happy.mp3");
+        bgMusic.loop = true;
+        
+        // Mantener el audio reproduciéndose incluso cuando cambie el contenido
+        window.audioController = {
+            audio: bgMusic,
+            isPlaying: false,
+            play() {
+                if (!this.isPlaying) {
+                    this.audio.play();
+                    this.isPlaying = true;
+                }
+            },
+            stop() {
+                this.audio.pause();
+                this.audio.currentTime = 0;
+                this.isPlaying = false;
+            }
+        };
+
+        const container = document.getElementById('collageContainer');
+        const overlay = document.getElementById('transitionOverlay');
+        const totalImages = 30;
+        const imagePositions = [];
+
+        function calculateFinalPositions() {
+            const rows = 5;
+            const cols = 6;
+            const positions = [];
+            const cellWidth = window.innerWidth / cols;
+            const cellHeight = window.innerHeight / rows;
+
+            for(let row = 0; row < rows; row++) {
+                for(let col = 0; col < cols; col++) {
+                    positions.push({
+                        x: col * cellWidth,
+                        y: row * cellHeight
+                    });
+                }
+            }
+            return positions;
+        }
+
+        function generateInitialPositions() {
+            for(let i = 0; i < totalImages; i++) {
+                imagePositions.push({
+                    x: Math.random() * (window.innerWidth - 300),
+                    y: Math.random() * (window.innerHeight - 300),
+                    rotation: Math.random() * 360,
+                    scale: 0.8 + Math.random() * 0.4,
+                    delay: i * 150
+                });
+            }
+        }
+
+        function createImageElement(index) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'image-wrapper';
+            
+            const img = document.createElement('div');
+            img.className = 'image';
+            img.style.backgroundImage = `url('/api/placeholder/${300}/${300}')`;
+            
+            const pos = imagePositions[index];
+            wrapper.style.left = pos.x + 'px';
+            wrapper.style.top = pos.y + 'px';
+            wrapper.style.transform = `
+                rotate(${pos.rotation}deg) 
+                scale(${pos.scale}) 
+                translateZ(${-index * 10}px)
+            `;
+            
+            wrapper.appendChild(img);
+            return wrapper;
+        }
+
+        function animateImage(wrapper, index) {
+            setTimeout(() => {
+                wrapper.style.opacity = '1';
+                wrapper.style.animation = 'floatAnimation 3s ease-in-out infinite';
+            }, imagePositions[index].delay);
+        }
+
+        function createSparkle() {
+            const sparkle = document.createElement('div');
+            sparkle.className = 'sparkle';
+            sparkle.style.left = Math.random() * window.innerWidth + 'px';
+            sparkle.style.top = Math.random() * window.innerHeight + 'px';
+            document.body.appendChild(sparkle);
+            
+            setTimeout(() => sparkle.remove(), 1500);
+        }
+
+        function moveToFinalPositions() {
+            const finalPositions = calculateFinalPositions();
+            const images = document.querySelectorAll('.image-wrapper');
+            
+            images.forEach((wrapper, index) => {
+                if (index < finalPositions.length) {
+                    wrapper.classList.add('final-position');
+                    wrapper.style.width = (window.innerWidth / 6) + 'px';
+                    wrapper.style.height = (window.innerHeight / 5) + 'px';
+                    wrapper.style.left = finalPositions[index].x + 'px';
+                    wrapper.style.top = finalPositions[index].y + 'px';
+                    wrapper.style.transform = 'rotate(0deg) scale(1) translateZ(0)';
+                }
+            });
+        }
+
+        function fadeOutAllImages() {
+            const images = document.querySelectorAll('.image-wrapper');
+            images.forEach(wrapper => {
+                wrapper.classList.add('fade-out');
+            });
+
+            overlay.style.opacity = '1';
+
+            setTimeout(() => {
+                triggerNextSection();
+            }, 2000);
+        }
+
+        function triggerNextSection() {
+            // Emitir evento de transición manteniendo la música
+            const transitionEvent = new CustomEvent('collageComplete');
+            document.dispatchEvent(transitionEvent);
+        }
+
+        function startSequence() {
+            generateInitialPositions();
+            
+            for(let i = 0; i < totalImages; i++) {
+                const wrapper = createImageElement(i);
+                container.appendChild(wrapper);
+                animateImage(wrapper, i);
+            }
+
+            setTimeout(() => {
+                moveToFinalPositions();
+                setTimeout(fadeOutAllImages, 2000);
+            }, totalImages * 150 + 1000);
+        }
+
+        // Inicialización
+        window.onload = () => {
+            setInterval(createSparkle, 200);
+
+            document.addEventListener('click', () => {
+                window.audioController.play(); // Usar el controlador de audio global
+                startSequence();
+            });
+        };
+
+        // Evento para el siguiente bloque
+        document.addEventListener('collageComplete', () => {
+            // La música continuará reproduciéndose
+            console.log('Collage completo - Listo para el siguiente bloque');
+            // Aquí puedes iniciar tu siguiente bloque de código
+        });
+
+        // Mantener el audio incluso al cambiar de página
+        window.addEventListener('beforeunload', () => {
+            // Opcional: guardar el tiempo actual de la música
+            sessionStorage.setItem('musicTime', window.audioController.audio.currentTime);
+        });
+    </script>
+</body>
+</html>
